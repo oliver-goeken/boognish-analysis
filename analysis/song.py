@@ -43,3 +43,11 @@ class Song:
 
     def to_dict(self):
         return {"name": self.name, "plays": [play.to_dict() for play in self.plays]}
+
+    def sort_plays(self):
+        self.plays = sorted(
+            self.plays,
+            key=lambda play: play.date.split("-")[2]
+            + play.date.split("-")[0]
+            + play.date.split("-")[1],
+        )
