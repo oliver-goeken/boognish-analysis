@@ -23,7 +23,7 @@ class Song:
         self.plays = []
 
     def add_play(self, date, location, gap, position, show_length, set):
-        self.plays.add(self.Play(date, location, gap, position, show_length, set))
+        self.plays.append(self.Play(date, location, gap, position, show_length, set))
         return self
 
     def to_dict(self):
@@ -33,7 +33,7 @@ class Song:
         self.name = dict["name"]
         play_dict = dict["plays"]
         self.plays = [
-            Play(
+            self.Play(
                 play["date"],
                 play["location"],
                 play["gap"],
