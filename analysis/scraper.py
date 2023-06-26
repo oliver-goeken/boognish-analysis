@@ -55,5 +55,6 @@ if __name__ == "__main__":
     songs = [Song("A Tear for Eddie").add_play(12, "here", 5, 6, 27, "Main")]
 
     song_dict = [song.to_dict() for song in songs]
+    print(song_dict[0])
     song_df = pd.DataFrame(song_dict)
-    song_df.to_parquet("data.parquet")
+    song_df.to_pickle("data.pkl")

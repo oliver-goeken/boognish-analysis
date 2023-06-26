@@ -18,28 +18,28 @@ class Song:
                 "set": self.set,
             }
 
-    def __init__(self, name) -> None:
-        self.name = name
-        self.plays = []
+    def __init__(self, data) -> None:
+        if type(data) == dict:
+            self.name = data["name"]
+            play_dict = data["plays"]
+            self.plays = [
+                self.Play(
+                    play["date"],
+                    play["location"],
+                    play["gap"],
+                    play["position"],
+                    play["show_length"],
+                    play["set"],
+                )
+                for play in play_dict
+            ]
+        else:
+            self.name = data
+            self.plays = []
 
     def add_play(self, date, location, gap, position, show_length, set):
         self.plays.append(self.Play(date, location, gap, position, show_length, set))
         return self
 
     def to_dict(self):
-        return {"name": self.name, "plays": [play.to_dict for play in self.plays]}
-
-    def load_from_dict(self, dict) -> None:
-        self.name = dict["name"]
-        play_dict = dict["plays"]
-        self.plays = [
-            self.Play(
-                play["date"],
-                play["location"],
-                play["gap"],
-                play["position"],
-                play["show_length"],
-                play["set"],
-            )
-            for play in play_dict
-        ]
+        return {"name": self.name, "plays": [play.to_dict() for play in self.plays]}
