@@ -52,9 +52,8 @@ if __name__ == "__main__":
 
         page_number += 100
 
-    songs = [Song("A Tear for Eddie").add_play(12, "here", 5, 6, 27, "Main")]
+    songs = []
 
-    song_dict = [song.to_dict() for song in songs]
-    print(song_dict[0])
+    song_dict = [song.to_dict() for song in songs
     song_df = pd.DataFrame(song_dict)
     song_df.to_pickle("data.pkl")
