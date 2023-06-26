@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     songs = []
 
-    for song_link in song_links[1:3]:
+    for song_link in song_links:
         songs.append(parse_song_data(URL_BASE + song_link + URL_SORT))
 
     songs = sorted(songs, key=lambda song: song.name)
