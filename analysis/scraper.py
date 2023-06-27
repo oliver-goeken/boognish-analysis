@@ -98,4 +98,4 @@ if __name__ == "__main__":
 
     song_dict = [song.to_dict() for song in songs]
     song_df = pd.DataFrame(song_dict)
-    song_df.to_pickle("data.pkl")
+    song_df.to_parquet("data.parquet")
