@@ -1,101 +1,113 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from song import Song
 
 
-def get_song_links(URL):
-    headers = {
+def scrape(URL):
+    HEADER = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:55.0) Gecko/20100101 Firefox/55.0",
     }
 
-    page = requests.get(URL, headers=headers)
+    page = requests.get(URL, headers=HEADER)
     soup = BeautifulSoup(page.content, "html.parser")
 
-    errors = soup.findAll("h3", class_="error")
+    return soup
 
-    for error in errors:
-        if error.getText() == "Ween did not play any songs in ":
-            return False
 
+def get_song_links(URL_BASE):
+    URL_SONGS = "song_list.php?band=Ween&s={}&p=4&sort=2&ascDesc=DESC#table_top"
+
+    page_number = 0
     song_links = []
+    while True:
+        links_page = scrape(URL_BASE + URL_SONGS.format(page_number))
 
-    songs = soup.find_all("tr", class_="bg_b") + soup.find_all("tr", class_="bg_a")
-
-    for song in songs:
-        if song.find_all("td", class_="mo-center")[0].getText() == "by Ween":
-            song_links.append(
-                song.find_all("td", class_="mo-bigger")[0].find("a")["href"]
+        if any(
+            error.getText() == "Ween did not play any songs in "
+            for error in links_page.findAll("h3", class_="error")
+        ):
+            break
+        else:
+            songs = links_page.find_all("tr", class_="bg_b") + links_page.find_all(
+                "tr", class_="bg_a"
             )
+
+            for song in songs:
+                if song.find("td", class_="mo-center").getText() == "by Ween":
+                    song_links.append(
+                        song.find("td", class_="mo-bigger").find("a")["href"]
+                    )
+
+            page_number += 100
 
     return song_links
 
 
-def parse_song_data(URL):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:55.0) Gecko/20100101 Firefox/55.0",
-    }
+def convert_date(date):
+    date_arr = date.split("-")
 
-    page = requests.get(URL, headers=headers)
-    soup = BeautifulSoup(page.content, "html.parser")
+    return date_arr[2] + date_arr[0] + date_arr[1]
 
-    song = Song(soup.find("h1").getText().split("by Ween")[0])
 
-    table = soup.find("table", class_="main-table")
-    play_history = table.find_all("tr", class_="bg_b") + table.find_all(
-        "tr", class_="bg_a"
-    )
+def get_song_data(URL_BASE, song_links):
+    songs = []
 
-    for play in play_history:
-        data = play.find_all("td")
+    for link in song_links:
+        song_page = scrape(URL_BASE + link)
+        song = {"name": song_page.find("h1").getText().split("by Ween")[0], "plays": []}
 
-        if len(data) > 8:
-            del data[0]
+        main_table = song_page.find("table", class_="main-table")
+        play_history = main_table.find_all("tr", class_="bg_b") + main_table.find_all(
+            "tr", class_="bg_a"
+        )
 
-        play_date = data[1].getText().strip()
-        play_loc = data[2].getText().strip()
-        try:
-            play_gap = data[3].getText().strip()
-        except:
-            play_gap = 0
-        play_pos_size = data[4].getText().strip().split(" of ")
-        print("-" + song.name + "- " + data[4].getText().strip())
-        play_pos = play_pos_size[0]
-        play_len = play_pos_size[1]
-        play_set = data[5].getText().strip()
+        for play in play_history:
+            play_data = {
+                "date": "",
+                "location": "",
+                "gap": "",
+                "position": "",
+                "show_length": "",
+                "set": "",
+            }
 
-        song.add_play(play_date, play_loc, play_gap, play_pos, play_len, play_set)
+            info = play.find_all("td")
+            if len(info) > 8:
+                del info[0]
 
-    song.sort_plays()
+            info = [line.getText().strip() for line in info]
 
-    return song
+            play_data["date"] = info[1]
+            play_data["location"] = info[2]
+            pos_and_len = info[4].split(" of ")
+            play_data["position"] = pos_and_len[0]
+            play_data["show_length"] = pos_and_len[1]
+            play_data["set"] = info[5]
+            if info[3]:
+                play_data["gap"] = info[3]
+            else:
+                play_data["gap"] = 0
+
+            song["plays"].append(play_data)
+
+            print(song["name"] + " -- " + play_data["date"])
+
+        song["plays"] = sorted(
+            song["plays"], key=lambda play: convert_date(play["date"])
+        )
+
+        songs.append(song)
+
+    return songs
 
 
 if __name__ == "__main__":
-    song_links = []
-
-    URL = "https://brownbase.org/song_list.php?band=Ween&s={}&p=4&sort=2&ascDesc=DESC#table_top"
-    URL_SORT = "&sort=1&ascDesc=ASC#table_top"
     URL_BASE = "https://brownbase.org/"
-    page_number = 0
 
-    while True:
-        links = get_song_links(URL.format(page_number))
+    song_links = get_song_links(URL_BASE)
+    songs = get_song_data(URL_BASE, song_links)
 
-        if links == False:
-            break
-        else:
-            song_links += links
+    print(len(songs) + " songs scraped")
 
-        page_number += 100
-
-    songs = []
-
-    for song_link in song_links:
-        songs.append(parse_song_data(URL_BASE + song_link + URL_SORT))
-
-    songs = sorted(songs, key=lambda song: song.name)
-
-    song_dict = [song.to_dict() for song in songs]
-    song_df = pd.DataFrame(song_dict)
+    song_df = pd.DataFrame(songs)
     song_df.to_parquet("data.parquet")

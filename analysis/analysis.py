@@ -16,3 +16,4 @@ if __name__ == "__main__":
 
     for song in songs:
         print(song.name)
+        print(song.plays[0].date)
