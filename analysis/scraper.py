@@ -107,14 +107,17 @@ def song_data_thread(link):
 
 
 if __name__ == "__main__":
-    start = time.time()
+    start_time = time.time()
     URL_BASE = "https://brownbase.org/"
 
     song_links = get_song_links(URL_BASE)
     songs = get_song_data(song_links)
 
     print(
-        str(len(songs)) + " songs scraped in " + str(time.time() - start) + " seconds"
+        str(len(songs))
+        + " songs scraped in "
+        + "{:.2f}".format(time.time() - start_time)
+        + " seconds"
     )
 
     song_df = pd.DataFrame(songs)
