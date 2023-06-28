@@ -1,6 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import time
+from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
 
 
 def scrape(URL):
@@ -49,65 +52,70 @@ def convert_date(date):
     return date_arr[2] + date_arr[0] + date_arr[1]
 
 
-def get_song_data(URL_BASE, song_links):
-    songs = []
+def get_song_data(song_links):
+    with ThreadPoolExecutor(max_workers=cpu_count() * 10) as p:
+        songs = p.map(song_data_thread, song_links)
 
-    for link in song_links:
-        song_page = scrape(URL_BASE + link)
-        song = {"name": song_page.find("h1").getText().split("by Ween")[0], "plays": []}
+    return [song for song in songs]
 
-        main_table = song_page.find("table", class_="main-table")
-        play_history = main_table.find_all("tr", class_="bg_b") + main_table.find_all(
-            "tr", class_="bg_a"
-        )
 
-        for play in play_history:
-            play_data = {
-                "date": "",
-                "location": "",
-                "gap": "",
-                "position": "",
-                "show_length": "",
-                "set": "",
-            }
+def song_data_thread(link):
+    URL_BASE = "https://brownbase.org/"
 
-            info = play.find_all("td")
-            if len(info) > 8:
-                del info[0]
+    song_page = scrape(URL_BASE + link)
+    song = {"name": song_page.find("h1").getText().split("by Ween")[0], "plays": []}
 
-            info = [line.getText().strip() for line in info]
+    main_table = song_page.find("table", class_="main-table")
+    play_history = main_table.find_all("tr", class_="bg_b") + main_table.find_all(
+        "tr", class_="bg_a"
+    )
 
-            play_data["date"] = info[1]
-            play_data["location"] = info[2]
-            pos_and_len = info[4].split(" of ")
-            play_data["position"] = pos_and_len[0]
-            play_data["show_length"] = pos_and_len[1]
-            play_data["set"] = info[5]
-            if info[3]:
-                play_data["gap"] = info[3]
-            else:
-                play_data["gap"] = 0
+    for play in play_history:
+        play_data = {
+            "date": "",
+            "location": "",
+            "gap": "",
+            "position": "",
+            "show_length": "",
+            "set": "",
+        }
 
-            song["plays"].append(play_data)
+        info = play.find_all("td")
+        if len(info) > 8:
+            del info[0]
 
-            print(song["name"] + " -- " + play_data["date"])
+        info = [line.getText().strip() for line in info]
 
-        song["plays"] = sorted(
-            song["plays"], key=lambda play: convert_date(play["date"])
-        )
+        play_data["date"] = info[1]
+        play_data["location"] = info[2]
+        pos_and_len = info[4].split(" of ")
+        play_data["position"] = pos_and_len[0]
+        play_data["show_length"] = pos_and_len[1]
+        play_data["set"] = info[5]
+        if info[3]:
+            play_data["gap"] = info[3]
+        else:
+            play_data["gap"] = 0
 
-        songs.append(song)
+        song["plays"].append(play_data)
 
-    return songs
+        print(song["name"] + " -- " + play_data["date"])
+
+    song["plays"] = sorted(song["plays"], key=lambda play: convert_date(play["date"]))
+
+    return song
 
 
 if __name__ == "__main__":
+    start = time.time()
     URL_BASE = "https://brownbase.org/"
 
     song_links = get_song_links(URL_BASE)
-    songs = get_song_data(URL_BASE, song_links)
+    songs = get_song_data(song_links)
 
-    print(len(songs) + " songs scraped")
+    print(
+        str(len(songs)) + " songs scraped in " + str(time.time() - start) + " seconds"
+    )
 
     song_df = pd.DataFrame(songs)
     song_df.to_parquet("data.parquet")
