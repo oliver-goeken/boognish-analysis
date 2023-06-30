@@ -86,14 +86,14 @@ def song_data_thread(link):
 
         info = [line.getText().strip() for line in info]
 
-        play_data["date"] = info[1]
+        play_data["date"] = "".join(c for c in info[1] if c.isdigit() or c == "-")
         play_data["location"] = info[2]
         pos_and_len = info[4].split(" of ")
         play_data["position"] = pos_and_len[0]
         play_data["show_length"] = pos_and_len[1]
         play_data["set"] = info[5]
         if info[3]:
-            play_data["gap"] = info[3]
+            play_data["gap"] = "".join(c for c in info[3] if c.isdigit())
         else:
             play_data["gap"] = 0
 

@@ -1,5 +1,6 @@
 from song import Song
 import pandas as pd
+import time
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
@@ -57,9 +58,38 @@ def main_loop(songs):
         user_input = get_user_input(
             "\n\n\nWhich Ween song would you like to analyze?"
         ).lower()
+
         song = find_matching_song(user_input, songs)
 
-        print(song.name)
+        years = int(
+            get_user_input(
+                'How many years would you like to analyze "' + song.name + '" over?'
+            )
+        )
+
+        time_diff = time.localtime()
+        time_diff_writeable = list(time_diff)
+        time_diff_writeable[0] -= years
+        time_diff = time.mktime(tuple(time_diff_writeable))
+
+        gaps = []
+
+        for play in song.plays:
+            if time.mktime(time.strptime(play.date, "%m-%d-%Y")) > time_diff:
+                gaps.append(int(play.gap))
+
+        total_gap = 0
+        for gap in gaps:
+            total_gap += gap
+
+        print(
+            "The average gap for the past "
+            + str(years)
+            + ' years for the song "'
+            + song.name
+            + '" is:'
+        )
+        print(total_gap / len(gaps))
 
 
 if __name__ == "__main__":
